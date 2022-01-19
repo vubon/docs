@@ -3,9 +3,10 @@ title: Cluster networking architecture
 ---
 
 BigAnimal clusters can be exposed to client applications in two ways:
-- Public — The cluster is available on the Internet.
-- Private — Access to the cluster is restricted to specific
-sources, and network traffic never leaves the Azure network.
+
+-   Public — The cluster is available on the Internet.
+-   Private — Access to the cluster is restricted to specific
+    sources, and network traffic never leaves the Azure network.
 
 ## Basic architecture
 
@@ -16,7 +17,7 @@ supporting management services.
 This VNet is named after the region where the cluster is deployed. 
 For example, if the cluster is deployed in the East US region, it is
 named `vnet-eastus`. This VNet uses IP addresses in the
-`10.240.0.0.16` space.
+`10.240.0.0/16` space.
 
 ## Public cluster load balancing
 
@@ -59,5 +60,3 @@ Clusters can be changed from public to private and vice versa at any
 time. When this happens, the IP address previously assigned to the
 cluster is deallocated, a new one is assigned, and DNS is updated
 accordingly.
-
-
