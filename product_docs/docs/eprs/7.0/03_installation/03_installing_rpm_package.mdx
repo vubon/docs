@@ -29,7 +29,7 @@ The following table lists the RPM packages and the Replication Server component 
 | `edb-xdb-libs`                                       | Library files required by all components                                      |
 
 
-The Advanced Server server libs package must be available for access by Yum when installing any Replication Server RPM package component. The edb-asxx-server-libs package is a component of the Advanced Server repository package for version 9.6 or later. Step 3 shows how to enable access to the Advanced Server repository so Yum can access its server libs package.
+The Advanced Server server libs package must be available for access by Yum when installing any Replication Server RPM package component. The edb-asxx-server-libs package is a component of the Advanced Server repository package for version 10 or later. Step 3 shows how to enable access to the Advanced Server repository so Yum can access its server libs package.
 
 !!! Note
     You might have to enable the \[extras] repository definition in the `CentOS-Base.repo file (located in /etc/yum.repos.d)`.
@@ -87,12 +87,12 @@ Access to the packages in any of these repositories is accomplished by enabling 
 -   Using your requested credentials for the EDB Yum Repository, substitute the user name and password for the `<username>:<password>` placeholders of the baseurl parameter.
 -   Change the setting of the enabled parameter to `enabled=1`.
 
-For example, to access the server `libs` package from the repository for Advanced Server version 9.6, enable the following entry:
+For example, to access the server `libs` package from the repository for Advanced Server version 14, enable the following entry:
 
 ```text
 [edbas96]
-name=EnterpriseDB Advanced Server 9.6 $releasever - $basearch
-baseurl=http://<username>:<password>@yum.enterprisedb.com/9.6/redhat/rhel-$releasever-$basearch
+name=EnterpriseDB Advanced Server 14 $releasever - $basearch
+baseurl=http://<username>:<password>@yum.enterprisedb.com/14/redhat/rhel-$releasever-$basearch
 enabled=1
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/ENTERPRISEDB-GPG-KEY
@@ -260,7 +260,7 @@ For each step, you must be logged in as superuser.
 
 To log in as a superuser:
 
-```sh
+```shell
 sudo su -
 ```
 
@@ -270,7 +270,7 @@ sudo su -
 
 1. Set up the EDB repository:
 
-   ```sh
+   ```shell
    dnf -y install https://yum.enterprisedb.com/edbrepos/edb-repo-latest.noarch.rpm
    ```
 
@@ -278,7 +278,7 @@ sudo su -
 
 1. Add your EDB credentials to the edb.repo file:  
 
-   ```sh
+   ```shell
    sed -i "s@<username>:<password>@USERNAME:PASSWORD@" /etc/yum.repos.d/edb.repo
    ```
 
@@ -287,26 +287,26 @@ sudo su -
 
 1. Install the EPEL repository and refresh the cache:
 
-   ```sh
+   ```shell
    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
    dnf makecache
    ```
 
 1. Enable the codeready-builder-for-rhel-8-\*-rpms repository since EPEL packages may depend on packages from it:
 
-   ```sh
+   ```shell
    ARCH=$( /bin/arch )
    subscription-manager repos --enable "codeready-builder-for-rhel-8-${ARCH}-rpms"
    ```
 
 1. Disable the built-in PostgreSQL module:
-   ```sh
+   ```shell
    dnf -qy module disable postgresql
    ```
 
 #### Installing the Package
 
-```sh
+```shell
 dnf -y install edb-xdb
 ```
 

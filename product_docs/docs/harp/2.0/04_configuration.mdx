@@ -82,11 +82,11 @@ supplementary entries that will be described here.
   
   ```yaml
   dcs:
-  # either URI or DSN format is supported
+  # only DSN format is supported
     endpoints:
-      - "postgres://postgres@host1:5432/bdrdb"
-      - "postgres://postgres@host2:5432/bdrdb"
-      - "postgres://postgres@host3:5432/bdrdb"
+      - "host=host1 port=5432 dbname=bdrdb user=postgres"
+      - "host=host2 port=5432 dbname=bdrdb user=postgres"
+      - "host=host3 port=5432 dbname=bdrdb user=postgres"
   ```
 Currently, `bdr` consensus layer requires the first endpoint to point to the local postgres instance.  
 
@@ -96,6 +96,9 @@ Currently, `bdr` consensus layer requires the first endpoint to point to the loc
   to be logged as an error or retried, depending on the nature of the request.
   Default: 250.
 
+The following DCS SSL settings only apply when ```driver: etcd``` is set in the 
+configuration file.
+ 
 - **`ssl`**: Either `on` or `off` to enable SSL communication with the DCS.
   Default: `off`
 
@@ -134,6 +137,18 @@ needs at least one more setting:
   `bdr.create_node(node_name, ...)` function and as reported by the
   `bdr.local_node_summary.node_name` view column. Alphanumeric characters
   and underscores only.
+
+- **`start_command`**: This can be used instead of the information in DCS for
+  starting the database to be monitored. This is required if using bdr as the
+  consensus layer.
+
+- **`status_command`**: This can be used instead of the information in DCS for
+  the Harp Manager to determine whether or not the database is running. This is
+  required if using bdr as the consensus layer.
+
+- **`stop_command`**: This can be used instead of the information in DCS for
+  stopping the database.
+
 
 Thus a complete configuration example for HARP Manager could resemble this:
 
@@ -183,8 +198,8 @@ Proxy-based settings may be specified under a `proxy` heading, and include:
   Each Proxy node is named to ensure any associated statistics or operating
   state are available in status checks and other interactive events.
 
-- **`type`**: Specifies whether pgbouncer or the experimental simple passthrough proxy will be used.  All proxies must use the same proxy type.  It is recommended to only experiment with the simple proxy in combination with the experimental BDR DCS.
-  May be `pgbouncer` or `simpleproxy`.
+- **`type`**: Specifies whether pgbouncer or the experimental built-in passthrough proxy will be used.  All proxies must use the same proxy type.  It is recommended to only experiment with the simple proxy in combination with the experimental BDR DCS.
+  May be `pgbouncer` or `builtin`.
   
   * Default: `pgbouncer`
 
@@ -285,8 +300,6 @@ modified with a `harpctl set node` command.
   Postgres data directory itself. In these cases, this should be set to that
   expected location.
 
-  * Default `db_data_dir`
- 
 - **`db_log_file`**: Location of Postgres log file.
   
   * Default `/tmp/pg_ctl.out`
@@ -300,7 +313,7 @@ modified with a `harpctl set node` command.
   grace period to refresh the lock, before expiration allows another node to 
   obtain the Lead Master lock instead.
 
-  * Default: 30
+  * Default: 6
 
 - **`lease_refresh_interval`**: Amount of time in milliseconds between 
   refreshes of the Lead Master lease. This essentially controls the time 
@@ -308,7 +321,7 @@ modified with a `harpctl set node` command.
   Postgres node, and when the status of the node is updated in the Consensus 
   layer.
 
-  * Default: 5000
+  * Default: 2000
 - **`max_dcs_failures`**: The amount of DCS request failures before marking a node as fenced according to fence_node_on_dcs_failure. This prevents transient communication disruptions from shutting down database nodes. 
 
    * Default: 10
@@ -318,7 +331,7 @@ modified with a `harpctl set node` command.
   take the Lead Master lock. This prevents nodes experiencing terminal amounts
   of lag from taking the Lead Master lock. Set to -1 to disable this check.
 
-  * Default: 1048576 (1MB)
+  * Default: -1
 
 - **`maximum_camo_lag`**: Highest allowable variance (in bytes) between last
   received LSN and applied LSN between this node and its CAMO partner(s).
@@ -328,7 +341,7 @@ modified with a `harpctl set node` command.
   this very low, or even to 0 to avoid any unapplied CAMO transactions. Set to
   -1 to disable this check.
 
-  * Default: 1048576 (1MB)
+  * Default: -1
 
 - **`ready_status_duration`**: Amount of time in seconds the node's readiness 
   status will persist if not refreshed. This is a failsafe that will remove a
@@ -343,20 +356,8 @@ modified with a `harpctl set node` command.
   default. The assumption is that the appropriate binaries are in the 
   environment's `PATH` variable otherwise.
 
-- **`priority`**: Any numeric value greater than or equal to 0.
-  In the case two nodes have an equal amount of lag and other qualified 
-  criteria to take the Lead Master lease, this acts as an additional ranking 
-  value to prioritize one node over another. Any node where this option is set 
-  to 0 will be unable to take the Lead Master role, even when attempting to 
-  explicitly set the Lead Master using `harpctl`.
-
-  * Default: 100
-
-- **`safety_interval`**: Time in milliseconds required before allowing routing
-  to a newly promoted Lead Master. This is intended to allow automated checks
-  against HARP Router to fail across the cluster before transitioning new
-  connections to the promoted node. This helps enforce fully synchronized
-  routing targets. 0 to disable.
+- **`priority`**: Any numeric value.
+  Any node where this option is set to -1 will be unable to take the Lead Master role, even when attempting to explicitly set the Lead Master using `harpctl`.
 
   * Default: 100
 
@@ -373,6 +374,11 @@ modified with a `harpctl set node` command.
 
   * Default: 250
 
+- **`use_unix_socket`**: Specifies that HARP Manager should prefer to use 
+  unix sockets to connect to the database.
+
+  * Default: False
+
 All of these run-time directives can be modified via `harpctl`. Consider if we
 wished to decrease the `lease_refresh_interval` to 100ms on `node1`:
 
@@ -388,7 +394,8 @@ without altering a configuration file. Many of these settings are direct
 mappings to their PgBouncer equivalent, and we will note these where relevant.
 
 Settings here should be set under a `proxies` YAML heading during bootstrap, or
-modified with a `harpctl set proxy` command.
+modified with a `harpctl set proxy` command. 
+Properties set via `harpctl set proxy` require a restart of the proxy.
 
 - **`auth_file`**: The full path to a PgBouncer-style `userlist.txt` file.
   HARP Proxy will use this file to store a `pgbouncer` user which will have
@@ -463,12 +470,12 @@ modified with a `harpctl set proxy` command.
   * Default `extra_float_digits`
 
 - **`listen_address`**: IP address(es) where Proxy should listen for
-  connections. This is a PgBouncer setting.
+  connections. Used by pgbouncer and builtin proxy.
 
   * Default 0.0.0.0
 
-- **`listen_port`**: System Port where Proxy should listen for connections.
-  This is a PgBouncer setting.
+- **`listen_port`**: System Port where Proxy should listen for connections. 
+     Used by pgbouncer and builtin proxy.
 
   * Default 6432
 
@@ -510,9 +517,20 @@ modified with a `harpctl set proxy` command.
   
   * Default 30
 
+The following two options only apply when using the built-in proxy.  
+
+- **`keepalive`**: The number of seconds the built-in proxy will wait before sending a keepalive message to an idle leader connection.
+  
+  * Default 5
+
+
+- **`timeout`**: The number of seconds the built-in proxy will wait before giving up on connecting to the leader.
+  
+  * Default 1
+
 When using `harpctl` to change any of these settings for all proxies, use the 
 `global` keyword in place of the proxy name. Example:
 
 ```bash
-harpctl set proxy global max_client_conn 1000
+harpctl set proxy global max_client_conn=1000
 ```
